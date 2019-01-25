@@ -89,8 +89,14 @@ def main():
     conf(sys.argv[1:])
 
     if not conf.component:
-        print("Error, no component mode defined, use --component")
-        sys.exit(1)
+        # Try guessing service type
+        tokens = conf.host.split('-')
+        if len(tokens) > 1:
+            try:
+                conf.component = next(x for x in ['neutron', 'nova', 'cinder'] if x == tokens[0])
+            except StopIteration:
+                print("Error, no component mode defined, use --component")
+                sys.exit(1)
 
     from agentliveness.agent import Liveness
     return Liveness(conf).check()

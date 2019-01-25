@@ -13,5 +13,8 @@ Usage
 
     # openstack-agent-liveness --component nova --config-file /etc/nova/nova.conf
 
-    # openstack-agent-liveness --component neutron --config-file /etc/nova/neutron.conf
+    # openstack-agent-liveness --component neutron --config-file /etc/neutron/neutron.conf
 
+    # openstack-agent-liveness --component cinder --config-file /etc/cinder/cinder.conf
+
+    --component can be ommited if the service name is part of the hostname (e.g. nova-scheduler)
