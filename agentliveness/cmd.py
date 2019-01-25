@@ -71,12 +71,13 @@ auth_opts = [
 def main():
     cli_opts = [
         cfg.StrOpt('component',
-                   choices=['neutron', 'nova'],
+                   short='c',
+                   choices=['neutron', 'nova', 'cinder'],
                    help='Openstack Service to check'),
-        cfg.BoolOpt('debug',
-                    short='d',
-                    default=False,
-                    help='Print debugging output.'),
+        cfg.StrOpt('binary',
+                    short='b',
+                    default=None,
+                    help='For neutron agent, filter for this binary'),
     ]
 
     conf = cfg.CONF

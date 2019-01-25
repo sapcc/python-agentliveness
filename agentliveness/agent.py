@@ -33,7 +33,10 @@ class Liveness(object):
     def _check_neutron(self):
         neutron = neutron_client.Client(session=self._get_session(), endpoint_type='internal')
         try:
-            for agent in neutron.list_agents(host=self.CONF.host).get('agents', []):
+            params = {'host': self.CONF.host}
+            if self.CONF.binary:
+                params.update({'binary':self.CONF.binary})
+            for agent in neutron.list_agents(**params).get('agents', []):
                 if agent.get('alive', False):
                     return 0
                 else:
