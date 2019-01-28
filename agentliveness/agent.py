@@ -11,12 +11,19 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+try:
+    from cinderclient.v3 import client as cinder_client
+except ImportError:
+    from cinderclient.v2 import client as cinder_client
+from keystoneauth1 import session
 from keystoneauth1.exceptions import ClientException
 from keystoneauth1.identity import v3
-from keystoneauth1 import session
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
-from cinderclient.v3 import client as cinder_client
+from oslo_log import log as logging
+
+LOG = logging.getLogger(__name__)
+
 
 class Liveness(object):
     def __init__(self, CONF):
@@ -35,16 +42,17 @@ class Liveness(object):
         try:
             params = {'host': self.CONF.host}
             if self.CONF.binary:
-                params.update({'binary':self.CONF.binary})
+                params.update({'binary': self.CONF.binary})
             for agent in neutron.list_agents(**params).get('agents', []):
                 if agent.get('alive', False):
                     return 0
                 else:
                     return 1
-            print("Warning: Agent hostname %s not registered" % self.CONF.host)
+
+            LOG.error("Warning: Agent hostname %s not registered" % self.CONF.host)
         except ClientException as e:
             # keystone/neutron Down, return 0
-            print("Warning: Keystone or Neutron down, cannot determine liveness: ", e)
+            LOG.error("Warning: Keystone or Neutron down, cannot determine liveness: ", e)
 
         return 0
 
@@ -56,10 +64,11 @@ class Liveness(object):
                     return 0
                 else:
                     return 1
-            print("Warning: Agent hostname not %s registered" % self.CONF.host)
+
+            LOG.error("Warning: Agent hostname not %s registered" % self.CONF.host)
         except ClientException as e:
             # keystone/nova Down, return 0
-            print("Warning: Keystone or Nova down, cannot determine liveness: ", e)
+            LOG.error("Warning: Keystone or Nova down, cannot determine liveness: ", e)
 
         return 0
 
@@ -71,10 +80,11 @@ class Liveness(object):
                     return 0
                 else:
                     return 1
-            print("Warning: Agent hostname not %s registered" % self.CONF.host)
+
+            LOG.error("Warning: Agent hostname not %s registered" % self.CONF.host)
         except ClientException as e:
             # keystone/nova Down, return 0
-            print("Warning: Keystone or Cinder down, cannot determine liveness: ", e)
+            LOG.error("Warning: Keystone or Cinder down, cannot determine liveness: ", e)
 
         return 0
 

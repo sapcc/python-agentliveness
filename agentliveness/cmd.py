@@ -14,8 +14,12 @@
 import socket
 import sys
 
-from oslo_config import cfg
 from keystoneauth1 import loading as ks_loading
+from oslo_config import cfg
+from oslo_log import log as logging
+
+LOG = logging.getLogger(__name__)
+
 
 host_opts = [
     cfg.StrOpt("host",
@@ -82,6 +86,8 @@ def main():
 
     conf = cfg.CONF
     conf.register_cli_opts(cli_opts)
+    logging.register_options(conf)
+    logging.setup(conf, "openstack-agentliveness")
     ks_loading.register_auth_conf_options(conf, 'keystone_authtoken')
     ks_loading.register_auth_conf_options(conf, 'nova')
     ks_loading.register_session_conf_options(conf, 'nova')
@@ -96,7 +102,7 @@ def main():
             try:
                 conf.component = next(x for x in ['neutron', 'nova', 'cinder'] if x == tokens[0])
             except StopIteration:
-                print("Error, no component mode defined, use --component")
+                LOG.critical("Error, no component mode defined, use --component")
                 sys.exit(1)
 
     from agentliveness.agent import Liveness
