@@ -82,6 +82,10 @@ def main():
                     short='b',
                     default=None,
                     help='For neutron agent, filter for this binary'),
+        cfg.BoolOpt('dhcp_ready',
+                    short='r',
+                    default=False,
+                    help='check that dhcp-agent has all networks synced'),
     ]
 
     conf = cfg.CONF
@@ -95,7 +99,7 @@ def main():
     conf.register_opts(host_opts)
     conf(sys.argv[1:])
 
-    if not conf.component:
+    if conf.component is None:
         # Try guessing service type
         tokens = conf.host.split('-')
         if len(tokens) > 1:

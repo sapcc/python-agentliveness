@@ -31,11 +31,16 @@ class Liveness(object):
 
     def check(self):
         if self.CONF.component == 'neutron':
+            if self.CONF.dhcp_ready:
+                return self._check_neutron_dhcp_agent()
             return self._check_neutron()
         if self.CONF.component == 'nova':
             return self._check_nova()
         if self.CONF.component == 'cinder':
             return self._check_cinder()
+
+        LOG.error("Error: No component found / determined")
+        return 1
 
     def _check_neutron(self):
         neutron = neutron_client.Client(session=self._get_session(), endpoint_type='internal')
@@ -47,6 +52,34 @@ class Liveness(object):
                 if agent.get('alive', False):
                     return 0
                 else:
+                    return 1
+
+            LOG.error("Warning: Agent hostname %s not registered" % self.CONF.host)
+        except ClientException as e:
+            # keystone/neutron Down, return 0
+            LOG.error("Warning: Keystone or Neutron down, cannot determine liveness: ", e)
+
+        return 0
+
+    def _check_neutron_dhcp_agent(self):
+        neutron = neutron_client.Client(session=self._get_session(), endpoint_type='internal')
+        try:
+            params = {'host': self.CONF.host, 'agent_type': 'DHCP agent'}
+            if self.CONF.binary:
+                params.update({'binary': self.CONF.binary})
+            for agent in neutron.list_agents(**params).get('agents', []):
+                if agent.get('alive', False):
+                    dhcp_subnets = neutron.list_subnets(enable_dhcp=True, fields='network_id',
+                                               sort_key='network_id', sort_dir='asc')
+                    # if synced subnets is larger/equal dhcp-enabled subnets
+                    if len(dhcp_subnets['subnets']) <= agent['configurations'].get('subnets', 0):
+                        return 0
+
+                    LOG.warning("Warning: Not all Networks synced (%d < %d)" %
+                              (agent['configurations'].get('subnets', 0), len(dhcp_subnets['subnets'])))
+                    return 1
+                else:
+                    LOG.error("DHCP Agent down")
                     return 1
 
             LOG.error("Warning: Agent hostname %s not registered" % self.CONF.host)
