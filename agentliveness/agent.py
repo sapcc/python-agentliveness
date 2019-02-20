@@ -11,6 +11,8 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+import logging
+
 try:
     from cinderclient.v3 import client as cinder_client
 except ImportError:
@@ -20,9 +22,8 @@ from keystoneauth1.exceptions import ClientException
 from keystoneauth1.identity import v3
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
-from oslo_log import log as logging
 
-LOG = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Liveness(object):
@@ -39,7 +40,7 @@ class Liveness(object):
         if self.CONF.component == 'cinder':
             return self._check_cinder()
 
-        LOG.error("Error: No component found / determined")
+        logger.error("Error: No component found / determined")
         return 1
 
     def _check_neutron(self):
@@ -54,10 +55,10 @@ class Liveness(object):
                 else:
                     return 1
 
-            LOG.error("Warning: Agent hostname %s not registered" % self.CONF.host)
+            logger.error("Warning: Agent hostname %s not registered" % self.CONF.host)
         except ClientException as e:
             # keystone/neutron Down, return 0
-            LOG.error("Warning: Keystone or Neutron down, cannot determine liveness: ", e)
+            logger.error("Warning: Keystone or Neutron down, cannot determine liveness: ", e)
 
         return 0
 
@@ -75,17 +76,17 @@ class Liveness(object):
                     if len(dhcp_subnets['subnets']) <= agent['configurations'].get('subnets', 0):
                         return 0
 
-                    LOG.warning("Warning: Not all Networks synced (%d < %d)" %
+                    logger.warning("Warning: Not all Networks synced (%d < %d)" %
                               (agent['configurations'].get('subnets', 0), len(dhcp_subnets['subnets'])))
                     return 1
                 else:
-                    LOG.error("DHCP Agent down")
+                    logger.error("DHCP Agent down")
                     return 1
 
-            LOG.error("Warning: Agent hostname %s not registered" % self.CONF.host)
+            logger.error("Warning: Agent hostname %s not registered" % self.CONF.host)
         except ClientException as e:
             # keystone/neutron Down, return 0
-            LOG.error("Warning: Keystone or Neutron down, cannot determine liveness: ", e)
+            logger.error("Warning: Keystone or Neutron down, cannot determine liveness: ", e)
 
         return 0
 
@@ -98,10 +99,10 @@ class Liveness(object):
                 else:
                     return 1
 
-            LOG.error("Warning: Agent hostname not %s registered" % self.CONF.host)
+            logger.error("Warning: Agent hostname not %s registered" % self.CONF.host)
         except ClientException as e:
             # keystone/nova Down, return 0
-            LOG.error("Warning: Keystone or Nova down, cannot determine liveness: ", e)
+            logger.error("Warning: Keystone or Nova down, cannot determine liveness: ", e)
 
         return 0
 
@@ -114,10 +115,10 @@ class Liveness(object):
                 else:
                     return 1
 
-            LOG.error("Warning: Agent hostname not %s registered" % self.CONF.host)
+            logger.error("Warning: Agent hostname not %s registered" % self.CONF.host)
         except ClientException as e:
             # keystone/nova Down, return 0
-            LOG.error("Warning: Keystone or Cinder down, cannot determine liveness: ", e)
+            logger.error("Warning: Keystone or Cinder down, cannot determine liveness: ", e)
 
         return 0
 

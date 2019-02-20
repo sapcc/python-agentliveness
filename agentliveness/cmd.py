@@ -11,14 +11,14 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+import logging
 import socket
 import sys
 
 from keystoneauth1 import loading as ks_loading
 from oslo_config import cfg
-from oslo_log import log as logging
 
-LOG = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 host_opts = [
@@ -90,8 +90,7 @@ def main():
 
     conf = cfg.CONF
     conf.register_cli_opts(cli_opts)
-    logging.register_options(conf)
-    logging.setup(conf, "openstack-agentliveness")
+    logging.basicConfig(level=logging.WARNING)
     ks_loading.register_auth_conf_options(conf, 'keystone_authtoken')
     ks_loading.register_auth_conf_options(conf, 'nova')
     ks_loading.register_session_conf_options(conf, 'nova')
@@ -106,7 +105,7 @@ def main():
             try:
                 conf.component = next(x for x in ['neutron', 'nova', 'cinder'] if x == tokens[0])
             except StopIteration:
-                LOG.critical("Error, no component mode defined, use --component")
+                logging.critical("Error, no component mode defined, use --component")
                 sys.exit(1)
 
     from agentliveness.agent import Liveness
