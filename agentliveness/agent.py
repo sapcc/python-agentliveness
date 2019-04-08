@@ -40,7 +40,7 @@ class Liveness(object):
         if self.CONF.component == 'cinder':
             return self._check_cinder()
 
-        logger.error("Error: No component found / determined")
+        logger.error("No component found / determined")
         return 1
 
     def _check_neutron(self):
@@ -53,12 +53,13 @@ class Liveness(object):
                 if agent.get('alive', False):
                     return 0
                 else:
+                    logger.error("Agent %s is down, commencing suicide", agent[id])
                     return 1
 
-            logger.error("Warning: Agent hostname %s not registered" % self.CONF.host)
+            logger.warning("Agent hostname %s not registered" % self.CONF.host)
         except ClientException as e:
             # keystone/neutron Down, return 0
-            logger.error("Warning: Keystone or Neutron down, cannot determine liveness: ", e)
+            logger.warning("Keystone or Neutron down, cannot determine liveness: %s", e)
 
         return 0
 
@@ -70,23 +71,26 @@ class Liveness(object):
                 params.update({'binary': self.CONF.binary})
             for agent in neutron.list_agents(**params).get('agents', []):
                 if agent.get('alive', False):
-                    dhcp_subnets = neutron.list_subnets(enable_dhcp=True, fields='network_id',
-                                               sort_key='network_id', sort_dir='asc')
+                    count_enabled_networks = sum(
+                        x.get('admin_state_up', False)
+                        for x in
+                        neutron.list_networks_on_dhcp_agent(agent['id']).get('networks')
+                    )
                     # if synced subnets is larger/equal dhcp-enabled subnets
-                    if len(dhcp_subnets['subnets']) <= agent['configurations'].get('subnets', 0):
+                    if count_enabled_networks <= agent['configurations'].get('networks', 0):
                         return 0
 
-                    logger.warning("Warning: Not all Networks synced (%d < %d)" %
-                              (agent['configurations'].get('subnets', 0), len(dhcp_subnets['subnets'])))
+                    logger.warning("Not all Networks synced (%d < %d)" %
+                              (agent['configurations'].get('networks', 0), count_enabled_networks))
                     return 1
                 else:
                     logger.error("DHCP Agent down")
                     return 1
 
-            logger.error("Warning: Agent hostname %s not registered" % self.CONF.host)
+            logger.warning("Agent hostname %s not registered" % self.CONF.host)
         except ClientException as e:
             # keystone/neutron Down, return 0
-            logger.error("Warning: Keystone or Neutron down, cannot determine liveness: ", e)
+            logger.warning("Keystone or Neutron down, cannot determine liveness: %s", e)
 
         return 0
 
@@ -97,12 +101,13 @@ class Liveness(object):
                 if agent.state == 'up':
                     return 0
                 else:
+                    logger.error("Agent %s is down, commencing suicide", agent[id])
                     return 1
 
-            logger.error("Warning: Agent hostname not %s registered" % self.CONF.host)
+            logger.warning("Agent hostname not %s registered" % self.CONF.host)
         except ClientException as e:
             # keystone/nova Down, return 0
-            logger.error("Warning: Keystone or Nova down, cannot determine liveness: ", e)
+            logger.warning("Keystone or Nova down, cannot determine liveness: %s", e)
 
         return 0
 
@@ -113,12 +118,13 @@ class Liveness(object):
                 if agent.state == 'up':
                     return 0
                 else:
+                    logger.error("Agent %s is down, commencing suicide", agent[id])
                     return 1
 
-            logger.error("Warning: Agent hostname not %s registered" % self.CONF.host)
+            logger.warning("Agent hostname not %s registered" % self.CONF.host)
         except ClientException as e:
             # keystone/nova Down, return 0
-            logger.error("Warning: Keystone or Cinder down, cannot determine liveness: ", e)
+            logger.warning("Keystone or Cinder down, cannot determine liveness: %s", e)
 
         return 0
 
