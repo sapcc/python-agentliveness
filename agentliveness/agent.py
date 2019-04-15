@@ -53,7 +53,7 @@ class Liveness(object):
                 if agent.get('alive', False):
                     return 0
                 else:
-                    logger.error("Agent %s is down, commencing suicide", agent[id])
+                    logger.error("Agent %s is down, commencing suicide", agent['id'])
                     return 1
 
             logger.warning("Agent hostname %s not registered" % self.CONF.host)
@@ -101,7 +101,7 @@ class Liveness(object):
                 if agent.state == 'up':
                     return 0
                 else:
-                    logger.error("Agent %s is down, commencing suicide", agent[id])
+                    logger.error("Agent %s is down, commencing suicide", agent['id'])
                     return 1
 
             logger.warning("Agent hostname not %s registered" % self.CONF.host)
@@ -118,7 +118,7 @@ class Liveness(object):
                 if agent.state == 'up':
                     return 0
                 else:
-                    logger.error("Agent %s is down, commencing suicide", agent[id])
+                    logger.error("Agent %s is down, commencing suicide", agent['id'])
                     return 1
 
             logger.warning("Agent hostname not %s registered" % self.CONF.host)
