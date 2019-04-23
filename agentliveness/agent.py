@@ -26,6 +26,12 @@ from novaclient import client as nova_client
 logger = logging.getLogger(__name__)
 
 
+NETWORK_BLACKLIST = [
+    '1f14deff-c169-41de-bcbe-2caf3315273c',
+    '2f78d43f-9b81-4648-afdc-0ff4bf79de0d',
+    'a57af0a0-da92-49be-a98a-375ceca004b3'
+]
+
 class Liveness(object):
     def __init__(self, CONF):
         self.CONF = CONF
@@ -75,8 +81,9 @@ class Liveness(object):
                         x.get('admin_state_up', False)
                         for x in
                         neutron.list_networks_on_dhcp_agent(agent['id']).get('networks')
+                        if x.get('id') not in NETWORK_BLACKLIST
                     )
-                    # if synced subnets is larger/equal dhcp-enabled subnets
+                    # if synced networks is larger/equal dhcp-enabled subnets
                     if count_enabled_networks <= agent['configurations'].get('networks', 0):
                         return 0
 
