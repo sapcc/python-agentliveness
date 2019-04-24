@@ -12,6 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 import logging
+import os
+
+from neutronclient.common.exceptions import ServiceUnavailable
 
 try:
     from cinderclient.v3 import client as cinder_client
@@ -25,12 +28,6 @@ from novaclient import client as nova_client
 
 logger = logging.getLogger(__name__)
 
-
-NETWORK_BLACKLIST = [
-    '1f14deff-c169-41de-bcbe-2caf3315273c',
-    '2f78d43f-9b81-4648-afdc-0ff4bf79de0d',
-    'a57af0a0-da92-49be-a98a-375ceca004b3'
-]
 
 class Liveness(object):
     def __init__(self, CONF):
@@ -63,7 +60,7 @@ class Liveness(object):
                     return 1
 
             logger.warning("Agent hostname %s not registered" % self.CONF.host)
-        except ClientException as e:
+        except (ClientException, ServiceUnavailable) as e:
             # keystone/neutron Down, return 0
             logger.warning("Keystone or Neutron down, cannot determine liveness: %s", e)
 
@@ -77,25 +74,35 @@ class Liveness(object):
                 params.update({'binary': self.CONF.binary})
             for agent in neutron.list_agents(**params).get('agents', []):
                 if agent.get('alive', False):
-                    count_enabled_networks = sum(
-                        x.get('admin_state_up', False)
-                        for x in
+                    enabled_networks = [
+                        x for x in
                         neutron.list_networks_on_dhcp_agent(agent['id']).get('networks')
-                        if x.get('id') not in NETWORK_BLACKLIST
-                    )
+                        if x.get('admin_state_up', False)
+                    ]
                     # if synced networks is larger/equal dhcp-enabled subnets
-                    if count_enabled_networks <= agent['configurations'].get('networks', 0):
+                    if len(enabled_networks) <= agent['configurations'].get('networks', 0):
                         return 0
 
-                    logger.warning("Not all Networks synced (%d < %d)" %
-                              (agent['configurations'].get('networks', 0), count_enabled_networks))
-                    return 1
+                    """ We have more networks scheduled than synced, check if the currently
+                        missing one are non-externals """
+
+                    netns_path = '/run/netns'
+                    netns = [self.remove_prefix(f, 'qdhcp-') for f in os.listdir(netns_path)
+                             if os.path.isfile(netns_path + '/' + f)]
+                    for net in enabled_networks:
+                        if net.get('id') not in netns and not net.get('router:external'):
+                            logger.warning(" %d/%d synced, internal network '%s' not synced",
+                                           len(netns), len(enabled_networks), net.get('id'))
+                            return 1
+
+                    # All non-external networks synced, return OK.
+                    return 0
                 else:
                     logger.error("DHCP Agent down")
                     return 1
 
             logger.warning("Agent hostname %s not registered" % self.CONF.host)
-        except ClientException as e:
+        except (ClientException, ServiceUnavailable) as e:
             # keystone/neutron Down, return 0
             logger.warning("Keystone or Neutron down, cannot determine liveness: %s", e)
 
@@ -151,3 +158,9 @@ class Liveness(object):
                            user_domain_name=user_domain_name,
                            project_domain_name=project_domain_name)
         return session.Session(auth=auth)
+
+    @staticmethod
+    def remove_prefix(text, prefix):
+        if text.startswith(prefix):
+            return text[len(prefix):]
+        return text
