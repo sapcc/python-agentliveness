@@ -105,7 +105,10 @@ class Liveness(object):
         except (ClientException, ServiceUnavailable) as e:
             # keystone/neutron Down, return 0
             logger.warning("Keystone or Neutron down, cannot determine liveness: %s", e)
-
+        except OSError as e:
+            # /run/netns not existing yet
+            logger.warning("Namespace not created yet: %s", e)
+            return 1
         return 0
 
     def _check_nova(self):
