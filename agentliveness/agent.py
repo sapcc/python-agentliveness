@@ -131,11 +131,11 @@ class Liveness(object):
     def _check_cinder(self):
         cinder = cinder_client.Client(session=self._get_session())
         try:
-            for agent in cinder.services.list(host=self.CONF.host):
-                if agent.state == 'up':
+            for service in cinder.services.list(host=self.CONF.host):
+                if service.state == 'up':
                     return 0
                 else:
-                    logger.error("Agent %s is down, commencing suicide", agent['id'])
+                    logger.error("Agent %s is down, commencing suicide", service.host)
                     return 1
 
             logger.warning("Agent hostname not %s registered" % self.CONF.host)
