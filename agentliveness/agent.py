@@ -114,11 +114,11 @@ class Liveness(object):
     def _check_nova(self):
         nova = nova_client.Client(version='2.1', session=self._get_session(), endpoint_type='internal')
         try:
-            for agent in nova.services.list(host=self.CONF.host):
-                if agent.state == 'up':
+            for service in nova.services.list(host=self.CONF.host):
+                if service.state == 'up':
                     return 0
                 else:
-                    logger.error("Agent %s is down, commencing suicide", agent['id'])
+                    logger.error("Agent %s is down, commencing suicide", service.id)
                     return 1
 
             logger.warning("Agent hostname not %s registered" % self.CONF.host)
