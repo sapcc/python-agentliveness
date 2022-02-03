@@ -25,7 +25,13 @@ host_opts = [
     cfg.StrOpt("host",
                default=socket.gethostname(),
                sample_default='<current_hostname>',
-               help="Hostname")
+               help="Hostname"),
+    cfg.ListOpt('enabled_share_backends',
+                default=[None],
+                help='For manila only.'
+                     'A list of share backend names to use. These backend '
+                     'names should be backed by a unique [CONFIG] group '
+                     'with its options.'),
 ]
 
 auth_opts = [
@@ -76,7 +82,7 @@ def main():
     cli_opts = [
         cfg.StrOpt('component',
                    short='c',
-                   choices=['neutron', 'nova', 'cinder'],
+                   choices=['neutron', 'nova', 'cinder', 'manila'],
                    help='Openstack Service to check'),
         cfg.StrOpt('binary',
                     short='b',
@@ -103,7 +109,7 @@ def main():
         tokens = conf.host.split('-')
         if len(tokens) > 1:
             try:
-                conf.component = next(x for x in ['neutron', 'nova', 'cinder'] if x == tokens[0])
+                conf.component = next(x for x in ['neutron', 'nova', 'cinder', 'manila'] if x == tokens[0])
             except StopIteration:
                 logging.critical("Error, no component mode defined, use --component")
                 sys.exit(1)

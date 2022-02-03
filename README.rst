@@ -17,4 +17,6 @@ Usage
 
     # openstack-agent-liveness --component cinder --config-file /etc/cinder/cinder.conf
 
+    # openstack-agent-liveness --component manila --config-dir /etc/manila
+
     --component can be ommited if the service name is part of the hostname (e.g. nova-scheduler)

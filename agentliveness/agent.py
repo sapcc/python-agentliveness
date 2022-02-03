@@ -23,6 +23,7 @@ except ImportError:
 from keystoneauth1 import session
 from keystoneauth1.exceptions import ClientException
 from keystoneauth1.identity import v3
+from manilaclient.v2 import client as manila_client
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 
@@ -42,6 +43,8 @@ class Liveness(object):
             return self._check_nova()
         if self.CONF.component == 'cinder':
             return self._check_cinder()
+        if self.CONF.component == 'manila':
+            return self._check_manila()
 
         logger.error("No component found / determined")
         return 1
@@ -142,6 +145,28 @@ class Liveness(object):
         except ClientException as e:
             # keystone/nova Down, return 0
             logger.warning("Keystone or Cinder down, cannot determine liveness: %s", e)
+
+        return 0
+
+    def _check_manila(self):
+        manila = manila_client.Client(session=self._get_session())
+        try:
+            for backend in self.CONF.enabled_share_backends:
+                if backend is not None:
+                    host = "{}@{}".format(self.CONF.host, backend)
+                else:
+                    host = self.CONF.host
+                for service in manila.services.list({'host': host}):
+                    if service.state == 'up':
+                        return 0
+                    else:
+                        logger.error("Agent %s is down, commencing suicide", service.host)
+                        return 1
+
+                logger.warning("Agent hostname %s not registered" % host)
+        except ClientException as e:
+            # keystone/manila Down, return 0
+            logger.warning("Keystone or Manila down, cannot determine liveness: %s", e)
 
         return 0
 
