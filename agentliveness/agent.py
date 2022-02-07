@@ -156,14 +156,18 @@ class Liveness(object):
                     host = "{}@{}".format(self.CONF.host, backend)
                 else:
                     host = self.CONF.host
-                for service in manila.services.list({'host': host}):
-                    if service.state == 'up':
-                        return 0
-                    else:
+                agent_services = manila.services.list({'host': host})
+                if len(agent_services) == 0:
+                    logger.error("Agent hostname %s not registered", host)
+                    return 1
+                for service in agent_services:
+                    # state is binary 'up' or 'down'
+                    # https://github.com/openstack/manila/blob/b7d2fe164d73078c412a7d4240aa06f2a8b6de72/manila/api/v2/services.py#L50 # noqa: E501
+                    if service.state == 'down':
+                        # even one backend down out of multiple backends qualifies for reporting 'not live'
                         logger.error("Agent %s is down, commencing suicide", service.host)
                         return 1
 
-                logger.warning("Agent hostname %s not registered" % host)
         except ClientException as e:
             # keystone/manila Down, return 0
             logger.warning("Keystone or Manila down, cannot determine liveness: %s", e)
