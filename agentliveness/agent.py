@@ -151,11 +151,12 @@ class Liveness(object):
     def _check_manila(self):
         manila = manila_client.Client(session=self._get_session())
         try:
-            for backend in self.CONF.enabled_share_backends:
-                if backend is not None:
-                    host = "{}@{}".format(self.CONF.host, backend)
-                else:
-                    host = self.CONF.host
+            if self.CONF.enabled_share_backends:
+                hosts = ["{}@{}".format(self.CONF.host, backend) for backend in self.CONF.enabled_share_backends]
+            else:
+                hosts = [self.CONF.host]
+
+            for host in hosts:
                 agent_services = manila.services.list({'host': host})
                 if len(agent_services) == 0:
                     logger.error("Agent hostname %s not registered", host)

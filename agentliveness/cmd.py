@@ -27,7 +27,7 @@ host_opts = [
                sample_default='<current_hostname>',
                help="Hostname"),
     cfg.ListOpt('enabled_share_backends',
-                default=[None],
+                default=[],
                 help='For manila only.'
                      'A list of share backend names to use. These backend '
                      'names should be backed by a unique [CONFIG] group '
