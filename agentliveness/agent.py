@@ -149,7 +149,7 @@ class Liveness(object):
         return 0
 
     def _check_manila(self):
-        manila = manila_client.Client(session=self._get_session())
+        manila = manila_client.Client(session=self._get_session(), endpoint_type='internal')
         try:
             if self.CONF.enabled_share_backends:
                 hosts = ["{}@{}".format(self.CONF.host, backend) for backend in self.CONF.enabled_share_backends]
