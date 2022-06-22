@@ -185,7 +185,7 @@ class Liveness(object):
             logger.warning("please provide a ironic conductor host")
             return 0
         
-        ironic = ironic_client.Client(session=self._get_session(), endpoint_type='internal', version='1', endpoint_override='http://localhost:6385')
+        ironic = ironic_client.Client(session=self._get_session(), endpoint_type='internal', version='1')
         try:
             try:
                 conductor = ironic.conductor.get(self.CONF.ironic_conductor_host, os_ironic_api_version='1.58')
