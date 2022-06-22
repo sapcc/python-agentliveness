@@ -20,6 +20,8 @@ try:
     from cinderclient.v3 import client as cinder_client
 except ImportError:
     from cinderclient.v2 import client as cinder_client
+from ironicclient import client as ironic_client
+from ironicclient.common.apiclient import exceptions as ironic_exceptions
 from keystoneauth1 import session
 from keystoneauth1.exceptions import ClientException
 from keystoneauth1.identity import v3
@@ -45,6 +47,8 @@ class Liveness(object):
             return self._check_cinder()
         if self.CONF.component == 'manila':
             return self._check_manila()
+        if self.CONF.component == 'ironic':
+            return self._check_ironic()
 
         logger.error("No component found / determined")
         return 1
@@ -172,6 +176,34 @@ class Liveness(object):
         except ClientException as e:
             # keystone/manila Down, return 0
             logger.warning("Keystone or Manila down, cannot determine liveness: %s", e)
+
+        return 0
+
+    def _check_ironic(self):
+        host = self.CONF.ironic_conductor_host
+        if host is None:
+            logger.warning("please provide a ironic conductor host")
+            return 0
+        
+        ironic = ironic_client.Client(session=self._get_session(), endpoint_type='internal', version='1', endpoint_override='http://localhost:6385')
+        try:
+            try:
+                conductor = ironic.conductor.get(self.CONF.ironic_conductor_host, os_ironic_api_version='1.58')
+                if not conductor.alive:
+                    logger.error("Conductor %s is not alive, commencing suicide", self.CONF.ironic_conductor_host)
+                    return 1
+            except ironic_exceptions.NotFound:
+                logger.error("Conductor %s not found, commencing suicide", self.CONF.ironic_conductor_host)
+                return 1
+            
+            driver = ironic.driver.get(driver_name='ipmi', os_ironic_api_version='1.58')
+            if self.CONF.ironic_conductor_host not in driver.hosts:
+                logger.error("Conductor %s is not listed in ipmi driver, commencing suicide", self.CONF.ironic_conductor_host)
+                return 1
+
+        except ClientException as e:
+            # keystone/ironic Down, return 0
+            logger.warning("Keystone or Ironic down, cannot determine liveness: %s", e)
 
         return 0
 
