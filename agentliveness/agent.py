@@ -185,10 +185,10 @@ class Liveness(object):
             logger.warning("please provide a ironic conductor host")
             return 0
         
-        ironic = ironic_client.Client(session=self._get_session(), endpoint_type='internal', version='1')
+        ironic = ironic_client.get_client(session=self._get_session(), endpoint_type='internal', version='1', os_ironic_api_version='1.58')
         try:
             try:
-                conductor = ironic.conductor.get(self.CONF.ironic_conductor_host, os_ironic_api_version='1.58')
+                conductor = ironic.conductor.get(self.CONF.ironic_conductor_host)
                 if not conductor.alive:
                     logger.error("Conductor %s is not alive, commencing suicide", self.CONF.ironic_conductor_host)
                     return 1
@@ -196,7 +196,7 @@ class Liveness(object):
                 logger.error("Conductor %s not found, commencing suicide", self.CONF.ironic_conductor_host)
                 return 1
             
-            driver = ironic.driver.get(driver_name='ipmi', os_ironic_api_version='1.58')
+            driver = ironic.driver.get(driver_name='ipmi')
             if self.CONF.ironic_conductor_host not in driver.hosts:
                 logger.error("Conductor %s is not listed in ipmi driver, commencing suicide", self.CONF.ironic_conductor_host)
                 return 1
