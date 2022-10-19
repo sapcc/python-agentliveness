@@ -82,7 +82,7 @@ def main():
     cli_opts = [
         cfg.StrOpt('component',
                    short='c',
-                   choices=['neutron', 'nova', 'cinder', 'manila'],
+                   choices=['neutron', 'nova', 'cinder', 'manila', 'ironic'],
                    help='Openstack Service to check'),
         cfg.StrOpt('binary',
                     short='b',
@@ -92,6 +92,10 @@ def main():
                     short='r',
                     default=False,
                     help='check that dhcp-agent has all networks synced'),
+        cfg.StrOpt('ironic_conductor_host',
+                    short='i',
+                    default=None,
+                    help='Ironic Conductor to check'),
     ]
 
     conf = cfg.CONF
@@ -109,7 +113,7 @@ def main():
         tokens = conf.host.split('-')
         if len(tokens) > 1:
             try:
-                conf.component = next(x for x in ['neutron', 'nova', 'cinder', 'manila'] if x == tokens[0])
+                conf.component = next(x for x in ['neutron', 'nova', 'cinder', 'manila', 'ironic'] if x == tokens[0])
             except StopIteration:
                 logging.critical("Error, no component mode defined, use --component")
                 sys.exit(1)
