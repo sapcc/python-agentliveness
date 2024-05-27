@@ -11,7 +11,9 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+import argparse
 import logging
+import platform
 import socket
 import sys
 
@@ -78,11 +80,33 @@ auth_opts = [
 ]
 
 
+def _guess_component(options, choices, host):
+    if options.component is not None:
+        return True
+
+    # Try guessing service type
+    head, *tail = host.split('-', 2)
+    if not tail:
+        return False
+
+    if head in choices:
+        options.component = head
+    return options.component is not None
+
+
 def main():
+    possible_components = ['neutron', 'nova', 'cinder', 'manila', 'ironic']
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--component', choices=possible_components)
+    parsed, _ = parser.parse_known_args(sys.argv)
+
+    # First guess to make the automatic loading of config files work
+    _guess_component(parsed, possible_components, platform.node())
+
     cli_opts = [
         cfg.StrOpt('component',
                    short='c',
-                   choices=['neutron', 'nova', 'cinder', 'manila', 'ironic'],
+                   choices=possible_components,
                    help='Openstack Service to check'),
         cfg.StrOpt('binary',
                     short='b',
@@ -106,17 +130,12 @@ def main():
     ks_loading.register_session_conf_options(conf, 'nova')
     conf.register_opts(auth_opts, 'keystone_authtoken')
     conf.register_opts(host_opts)
-    conf(sys.argv[1:])
+    conf(project=parsed.component, args=sys.argv[1:])
 
-    if conf.component is None:
-        # Try guessing service type
-        tokens = conf.host.split('-')
-        if len(tokens) > 1:
-            try:
-                conf.component = next(x for x in ['neutron', 'nova', 'cinder', 'manila', 'ironic'] if x == tokens[0])
-            except StopIteration:
-                logging.critical("Error, no component mode defined, use --component")
-                sys.exit(1)
+    if not _guess_component(parsed, possible_components, conf.host):
+        logging.critical("Error, no component mode defined, use --component")
+        sys.exit(1)
+
 
     from agentliveness.agent import Liveness
     return Liveness(conf).check()
