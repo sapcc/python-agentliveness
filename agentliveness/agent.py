@@ -197,12 +197,11 @@ class Liveness(object):
                 return 1
             
             drivers = ironic.driver.list()
-            ipmi = next(
-                (driver for driver in drivers if driver.name == 'ipmi'),
-                None
-            )
-            if ipmi is None or self.CONF.ironic_conductor_host not in ipmi.hosts:
-                logger.error("Conductor %s is not listed in ipmi driver, commencing suicide", self.CONF.ironic_conductor_host)
+            for driver in drivers:
+                if self.CONF.ironic_conductor_host in driver.hosts:
+                    break
+            else:
+                logger.error("Conductor %s is not listed for any driver, commencing suicide", self.CONF.ironic_conductor_host)
                 return 1
 
         except ClientException as e:
