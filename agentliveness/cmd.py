@@ -95,7 +95,7 @@ def _guess_component(options, choices, host):
 
 
 def main():
-    possible_components = ['neutron', 'nova', 'cinder', 'manila']
+    possible_components = ['neutron', 'nova', 'cinder', 'manila', 'ironic']
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--component', choices=possible_components)
     parsed, _ = parser.parse_known_args(sys.argv)
@@ -116,6 +116,10 @@ def main():
                     short='r',
                     default=False,
                     help='check that dhcp-agent has all networks synced'),
+        cfg.StrOpt('ironic_conductor_host',
+                    short='i',
+                    default=None,
+                    help='Ironic Conductor to check'),
     ]
 
     conf = cfg.CONF
