@@ -14,8 +14,6 @@
 import logging
 import os
 
-from neutronclient.common.exceptions import ServiceUnavailable
-
 try:
     from cinderclient.v3 import client as cinder_client
 except ImportError:
@@ -26,15 +24,17 @@ from keystoneauth1 import session
 from keystoneauth1.exceptions import ClientException
 from keystoneauth1.identity import v3
 from manilaclient.v2 import client as manila_client
+from neutronclient.common.exceptions import ServiceUnavailable
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
+
 
 logger = logging.getLogger(__name__)
 
 
-class Liveness(object):
-    def __init__(self, CONF):
-        self.CONF = CONF
+class Liveness:
+    def __init__(self, conf):
+        self.CONF = conf
 
     def check(self):
         if self.CONF.component == 'neutron':
@@ -66,7 +66,7 @@ class Liveness(object):
                     logger.error("Agent %s is down, commencing suicide", agent['id'])
                     return 1
 
-            logger.warning("Agent hostname %s not registered" % self.CONF.host)
+            logger.warning("Agent hostname %s not registered", self.CONF.host)
         except (ClientException, ServiceUnavailable) as e:
             # keystone/neutron Down, return 0
             logger.warning("Keystone or Neutron down, cannot determine liveness: %s", e)
@@ -108,7 +108,7 @@ class Liveness(object):
                     logger.error("DHCP Agent down")
                     return 1
 
-            logger.warning("Agent hostname %s not registered" % self.CONF.host)
+            logger.warning("Agent hostname %s not registered", self.CONF.host)
         except (ClientException, ServiceUnavailable) as e:
             # keystone/neutron Down, return 0
             logger.warning("Keystone or Neutron down, cannot determine liveness: %s", e)
@@ -128,7 +128,7 @@ class Liveness(object):
                     logger.error("Agent %s is down, commencing suicide", service.id)
                     return 1
 
-            logger.warning("Agent hostname not %s registered" % self.CONF.host)
+            logger.warning("Agent hostname not %s registered", self.CONF.host)
         except ClientException as e:
             # keystone/nova Down, return 0
             logger.warning("Keystone or Nova down, cannot determine liveness: %s", e)
@@ -145,7 +145,7 @@ class Liveness(object):
                     logger.error("Agent %s is down, commencing suicide", service.host)
                     return 1
 
-            logger.warning("Agent hostname not %s registered" % self.CONF.host)
+            logger.warning("Agent hostname not %s registered", self.CONF.host)
         except ClientException as e:
             # keystone/nova Down, return 0
             logger.warning("Keystone or Cinder down, cannot determine liveness: %s", e)
@@ -156,7 +156,7 @@ class Liveness(object):
         manila = manila_client.Client(session=self._get_session(), endpoint_type='internal')
         try:
             if self.CONF.enabled_share_backends:
-                hosts = ["{}@{}".format(self.CONF.host, backend) for backend in self.CONF.enabled_share_backends]
+                hosts = [f"{self.CONF.host}@{backend}" for backend in self.CONF.enabled_share_backends]
             else:
                 hosts = [self.CONF.host]
 
@@ -184,8 +184,9 @@ class Liveness(object):
         if host is None:
             logger.warning("please provide a ironic conductor host")
             return 0
-        
-        ironic = ironic_client.get_client(session=self._get_session(), endpoint_type='internal', api_version='1', os_ironic_api_version='1.58')
+
+        ironic = ironic_client.get_client(session=self._get_session(), endpoint_type='internal', api_version='1',
+                                          os_ironic_api_version='1.58')
         try:
             try:
                 conductor = ironic.conductor.get(self.CONF.ironic_conductor_host)
@@ -195,13 +196,14 @@ class Liveness(object):
             except ironic_exceptions.NotFound:
                 logger.error("Conductor %s not found, commencing suicide", self.CONF.ironic_conductor_host)
                 return 1
-            
+
             drivers = ironic.driver.list()
             for driver in drivers:
                 if self.CONF.ironic_conductor_host in driver.hosts:
                     break
             else:
-                logger.error("Conductor %s is not listed for any driver, commencing suicide", self.CONF.ironic_conductor_host)
+                logger.error("Conductor %s is not listed for any driver, commencing suicide",
+                             self.CONF.ironic_conductor_host)
                 return 1
 
         except ClientException as e:
