@@ -24,6 +24,8 @@ from oslo_config import cfg
 
 logger = logging.getLogger(__name__)
 
+DEBUG = False
+
 
 host_opts = [
     cfg.StrOpt("host",
@@ -97,6 +99,12 @@ def _guess_component(options, choices, host):
 
 
 def main():
+    if DEBUG:
+        import http.client
+        http.client.HTTPSConnection.debuglevel = 1
+        http.client.HTTPConnection.debuglevel = 1
+
+
     possible_components = ['neutron', 'nova', 'cinder', 'manila', 'ironic']
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--component', choices=possible_components)
