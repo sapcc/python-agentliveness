@@ -20,7 +20,7 @@ except ImportError:
     from cinderclient.v2 import client as cinder_client
 from ironicclient import client as ironic_client
 from ironicclient.common.apiclient import exceptions as ironic_exceptions
-from keystoneauth1 import session
+from keystoneauth1 import session as ka_session
 from keystoneauth1.exceptions import ClientException
 from keystoneauth1.identity import v3
 from manilaclient.v2 import client as manila_client
@@ -33,8 +33,9 @@ logger = logging.getLogger(__name__)
 
 
 class Liveness:
-    def __init__(self, conf):
+    def __init__(self, conf, consistent_storage):
         self.CONF = conf
+        self._persistent_storage = consistent_storage
 
     def check(self):
         if self.CONF.component == 'neutron':
@@ -212,7 +213,44 @@ class Liveness:
 
         return 0
 
+    def _get_session_with_token_cache(self):
+        """Read the token from file and see if it still works
+
+        Returns `None` if the token didn't exist or expired.
+        """
+        try:
+            auth_ref = self._persistent_storage['auth_ref']
+        except KeyError:
+            return None
+
+        if auth_ref is None:
+            return None
+
+        auth = v3.Token(
+            self.CONF.keystone_authtoken.auth_url,
+            auth_ref.auth_token)
+        # we overwrite the auth_ref with our cached one to include the service
+        # endpoints without having to make a request against keystone
+        auth.auth_ref = auth_ref
+
+        session = ka_session.Session(auth=auth)
+
+        # this checks if the token expires soon and renews the token
+        # automatically if possible
+        try:
+            session.auth.get_access(session)
+        except Exception as e:
+            logger.error(e)
+            return None
+
+        return session
+
     def _get_session(self):
+        if self._persistent_storage is not None:
+            session = self._get_session_with_token_cache()
+            if session is not None:
+                return session
+
         auth_url = self.CONF.keystone_authtoken.auth_url
         user = self.CONF.keystone_authtoken.username
         pw = self.CONF.keystone_authtoken.password
@@ -227,7 +265,10 @@ class Liveness:
                            project_name=project_name,
                            user_domain_name=user_domain_name,
                            project_domain_name=project_domain_name)
-        return session.Session(auth=auth)
+        session = ka_session.Session(auth=auth)
+        if self._persistent_storage is not None:
+            self._persistent_storage['auth_ref'] = session.auth.get_access(session)
+        return session
 
     @staticmethod
     def remove_prefix(text, prefix):
