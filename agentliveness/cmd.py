@@ -12,8 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 import argparse
+import contextlib
 import logging
 import platform
+import shelve
 import socket
 import sys
 
@@ -120,6 +122,9 @@ def main():
                     short='i',
                     default=None,
                     help='Ironic Conductor to check'),
+        cfg.StrOpt('token_cache_file',
+                   default=None,
+                   help='File to read/write token to/from'),
     ]
 
     conf = cfg.CONF
@@ -136,9 +141,13 @@ def main():
         logging.critical("Error, no component mode defined, use --component")
         sys.exit(1)
 
+    open_storage = contextlib.nullcontext()
+    if conf.token_cache_file:
+        open_storage = shelve.open(conf.token_cache_file)
 
     from agentliveness.agent import Liveness
-    return Liveness(conf).check()
+    with open_storage as persistent_storage:
+        return Liveness(conf, persistent_storage).check()
 
 
 if __name__ == "__main__":
