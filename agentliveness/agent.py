@@ -145,11 +145,11 @@ class Liveness:
                 else:
                     if service.status == 'enabled':
                         logger.error("Agent %s is down, commencing suicide",
-                                    service.host)
+                                     service.host)
                         return 1
                     else:
                         logger.warning("Cinder service is manually disabled"
-                        " for host %s", service.host)
+                                       " for host %s", service.host)
                         return 0
 
             logger.warning("Agent hostname not %s registered", self.CONF.host)
